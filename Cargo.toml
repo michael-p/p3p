@@ -12,6 +12,9 @@ keywords = ["p3p", "pnp", "slam", "vision"] # up to 5 keywords
 categories = ["science::robotics", "multimedia::video"] # up to 5 categories, cf crates.io/category_slugs
 license = "MPL-2.0" # SPDX license
 
+[dependencies]
+libm = "0.2.1"
+
 [dependencies.nalgebra]
 version = "0.18.1"
 default-features = false

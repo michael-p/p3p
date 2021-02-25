@@ -1,3 +1,4 @@
+#![no_std]
 #![warn(missing_docs)]
 
 //! This package provides functions to solve camera pose estimation
@@ -13,5 +14,10 @@
 //!
 //! [pnp]: https://en.wikipedia.org/wiki/Perspective-n-Point
 //! [lambda-twist]: http://openaccess.thecvf.com/content_ECCV_2018/html/Mikael_Persson_Lambda_Twist_An_ECCV_2018_paper.html
+
+extern crate alloc;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
 pub mod nordberg;

@@ -13,6 +13,8 @@
 //!
 //! [lambda-twist-github]: https://github.com/midjji/lambdatwist-p3p
 
+use alloc::vec::Vec;
+use libm::{fabsf, sqrtf};
 use nalgebra::{Isometry3, Matrix3, Quaternion, Translation, UnitQuaternion, Vector3, Vector4};
 
 type Iso3 = Isometry3<f32>;
@@ -172,7 +174,7 @@ fn gauss_newton_refine_lambda(
 /// L1 norm is the sum of magnitudes.
 #[inline]
 fn l1_norm(v: Vec3) -> f32 {
-    v.x.abs() + v.y.abs() + v.z.abs()
+    fabsf(v.x) + fabsf(v.y) + fabsf(v.z)
 }
 
 /// Compute the real roots of "h(r) = r^2 + b*r + c = 0".
@@ -183,10 +185,10 @@ fn root2real(b: f32, c: f32) -> (bool, f32, f32) {
         let root = 0.5 * b;
         (false, root, root)
     } else if b < 0.0 {
-        let y = discriminant.sqrt();
+        let y = sqrtf(discriminant);
         (true, 0.5 * (-b + y), 0.5 * (-b - y))
     } else {
-        let y = discriminant.sqrt();
+        let y = sqrtf(discriminant);
         (true, 2.0 * c / (-b + y), 2.0 * c / (-b - y))
     }
 }
@@ -219,7 +221,7 @@ fn cube_root(b: f32, c: f32, d: f32) -> f32 {
     if b * b >= 3.0 * c {
         // h has two stationary points, compute them.
         // double t1 = t - sqrt(diff);
-        let v = (b * b - 3.0 * c).sqrt();
+        let v = sqrtf(b * b - 3.0 * c);
         let t1 = (-b - v) / 3.0;
 
         // Check if h(t1) > 0, in this case make a 2-order approx of h around t1.
@@ -227,17 +229,17 @@ fn cube_root(b: f32, c: f32, d: f32) -> f32 {
 
         if k > 0.0 {
             // Find leftmost root of 0.5 * (r0 - t1)^2 * (6 * t1 + 2 * b) + k = 0.
-            r0 = t1 - (-k / (3.0 * t1 + b)).sqrt();
+            r0 = t1 - sqrtf(-k / (3.0 * t1 + b));
         } else {
             let t2 = (-b + v) / 3.0;
             k = ((t2 + b) * t2 + c) * t2 + d;
             // Find rightmost root of 0.5 * (r0 - t2)^2 * (6 * t2 + 2 * b) + k1 = 0.
-            r0 = t2 + (-k / (3.0 * t2 + b)).sqrt();
+            r0 = t2 + sqrtf(-k / (3.0 * t2 + b));
         }
     } else {
         // r0 = 1.0 / cubick_inv(c/d, b/d, 1.0/d);
         r0 = -b / 3.0;
-        if ((3.0 * r0 + 2.0 * b) * r0 + c).abs() < 1e-4 {
+        if fabsf((3.0 * r0 + 2.0 * b) * r0 + c) < 1e-4 {
             r0 += 1.0;
         }
     }
@@ -252,7 +254,7 @@ fn cube_root(b: f32, c: f32, d: f32) -> f32 {
     }
     for _ in 0..43 {
         let fx = ((r0 + b) * r0 + c) * r0 + d;
-        if fx.abs() > 1e-13 {
+        if fabsf(fx) > 1e-13 {
             let fpx = (3.0 * r0 + 2.0 * b) * r0 + c;
             r0 -= fx / fpx;
         } else {
@@ -278,8 +280,8 @@ fn eigen_decomposition_singular(x: Mat3) -> (Mat3, Vec3) {
     let b = -x.m11 - x.m22 - x.m33;
     let c = -x12_sqr - x.m13 * x.m13 - x.m23 * x.m23 + x.m11 * (x.m22 + x.m33) + x.m22 * x.m33;
     let (_, mut e1, mut e2) = root2real(b, c);
-    if e1.abs() < e2.abs() {
-        std::mem::swap(&mut e1, &mut e2);
+    if fabsf(e1) < fabsf(e2) {
+        core::mem::swap(&mut e1, &mut e2);
     }
     eigenvalues[0] = e1;
     eigenvalues[1] = e2;
@@ -292,7 +294,7 @@ fn eigen_decomposition_singular(x: Mat3) -> (Mat3, Vec3) {
         let tmp = 1.0 / (e * (x.m11 + x.m22) + mx0011 - e * e + x12_sqr);
         let mut a1 = -(e * x.m13 + prec_0) * tmp;
         let mut a2 = -(e * x.m23 + prec_1) * tmp;
-        let rnorm = 1.0 / (a1 * a1 + a2 * a2 + 1.0).sqrt();
+        let rnorm = 1.0 / sqrtf(a1 * a1 + a2 * a2 + 1.0);
         a1 *= rnorm;
         a2 *= rnorm;
         Vec3::new(a1, a2, rnorm)
@@ -400,7 +402,7 @@ fn compute_poses_nordberg(
     let mut lambdas = Vec::with_capacity(4);
 
     // Solve the four possible solutions for the depths values.
-    let eigen_ratio = (0.0_f32.max(-eig_values[1] / eig_values[0])).sqrt();
+    let eigen_ratio = sqrtf(0.0_f32.max(-eig_values[1] / eig_values[0]));
 
     // Helper closure to compute quadratic coefficients.
     // CF equation (15) in paper.
@@ -420,7 +422,7 @@ fn compute_poses_nordberg(
     let possible_depths = |tau: f32, w0: f32, w1: f32| {
         let d = a23 / (tau * (b23 + tau) + 1.0);
         if d > 0.0 {
-            let l2 = d.sqrt();
+            let l2 = sqrtf(d);
             let l3 = tau * l2;
             let l1 = w0 * l2 + w1 * l3;
             (true, l1, l2, l3)
@@ -542,9 +544,9 @@ mod tests {
     #[quickcheck_macros::quickcheck]
     fn non_degenerate_case(rot: V3, trans: V3, p1: V3, p2: V3, p3: V3) -> bool {
         // Use EPSILON_APPROX to force minimum distance.
-        let p1_cam = [p1.0, p1.1, EPSILON_APPROX + p1.2.abs()];
-        let p2_cam = [p2.0, p2.1, EPSILON_APPROX + p2.2.abs()];
-        let p3_cam = [p3.0, p3.1, EPSILON_APPROX + p3.2.abs()];
+        let p1_cam = [p1.0, p1.1, EPSILON_APPROX + fabsf(p1.2)];
+        let p2_cam = [p2.0, p2.1, EPSILON_APPROX + fabsf(p2.2)];
+        let p3_cam = [p3.0, p3.1, EPSILON_APPROX + fabsf(p3.2)];
 
         // Stop if points are colinear.
         let d12 = Vec3::from(p1_cam) - Vec3::from(p2_cam);
@@ -553,14 +555,14 @@ mod tests {
             return true;
         }
         let cosine = d12.normalize().dot(&d13.normalize());
-        if cosine.abs() > 1.0 - EPSILON_APPROX {
+        if fabsf(cosine) > 1.0 - EPSILON_APPROX {
             return true;
         }
 
         // Also stop if points are orthogonal (weird but it makes it fail).
         // Example failure detected by quickcheck:
         // p1 = (0, 0, 0)   p2 = (0, 0, 1)   p3 = (0, 3, 0)
-        if cosine.abs() < EPSILON_APPROX {
+        if fabsf(cosine) < EPSILON_APPROX {
             return true;
         }
 
