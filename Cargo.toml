@@ -16,14 +16,14 @@ license = "MPL-2.0" # SPDX license
 libm = "0.2.1"
 
 [dependencies.nalgebra]
-version = "0.18.1"
+version = "0.24.1"
 default-features = false
-# features = []
+features = ["libm"]
 
 [dev-dependencies]
-approx = "0.3"
-quickcheck = "0.8"
-quickcheck_macros = "0.8"
+approx = "0.4"
+quickcheck = "0.9"
+quickcheck_macros = "0.9"
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "katex-header.html" ]
